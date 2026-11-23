@@ -1,0 +1,14 @@
+.git
+.gitignore
+.venv
+venv
+__pycache__
+*.py[cod]
+.env
+.env.*
+docs/*
+!docs/.gitkeep
+faiss_index/*
+!faiss_index/.gitkeep
+*.log
+.DS_Store

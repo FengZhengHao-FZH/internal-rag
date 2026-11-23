@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>内部知识助手</title>
+  <link rel="stylesheet" href="/static/app.css" />
+</head>
+<body>
+<div class="login-page" id="loginPage" style="display:flex">
+  <div class="login-shell">
+    <div class="login-brand">
+      <div>
+        <div class="big-logo">知</div>
+        <h1>内部知识助手</h1>
+        <p>基于企业文档的智能问答平台<br>提问即检索，答案有来源</p>
+      </div>
+      <div class="footer-note">请使用管理员分配的账号访问</div>
+    </div>
+    <div class="login-form">
+      <h2>欢迎回来</h2>
+      <p class="sub">登录后开始使用知识库</p>
+      <div class="card-field"><label>用户名</label><input id="loginUser" autocomplete="username" /></div>
+      <div class="card-field"><label>密码</label><input id="loginPass" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')login()" /></div>
+      <button class="btn-primary" onclick="login()">登录</button>
+      <div class="login-error" id="loginError"></div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="uploadOverlay">
+  <div class="card">
+    <div class="modal-head"><h2>上传文档</h2><button class="close-btn" onclick="closeUploadModal()">×</button></div>
+    <div class="card-field">
+      <label>文件</label>
+      <div class="file-pick" id="filePick" onclick="document.getElementById('modalFileInput').click()">点击选择文件</div>
+      <input type="file" id="modalFileInput" hidden accept=".xlsx,.xls,.csv,.docx,.pptx,.md,.txt,.pdf" onchange="onModalFilePicked(this)" />
+    </div>
+    <div class="card-field"><label>上传到部门</label><select id="uploadDept"><option value="public">公开</option></select></div>
+    <button class="btn-primary" onclick="confirmUpload()">开始上传</button>
+  </div>
+</div>
+
+<div class="overlay" id="userOverlay">
+  <div class="card">
+    <div class="modal-head"><h2>新增用户</h2><button class="close-btn" onclick="closeUserModal()">×</button></div>
+    <div class="card-field"><label>用户名</label><input id="newUsername" /></div>
+    <div class="card-field"><label>密码（至少 8 位）</label><input id="newPassword" type="password" /></div>
+    <div class="card-field"><label>部门</label><select id="newDept"><option value="">公开</option></select></div>
+    <div class="card-field"><label>角色</label><select id="newRole"><option value="user">只读用户</option><option value="admin">管理员</option></select></div>
+    <button class="btn-primary" onclick="createUser()">创建用户</button>
+  </div>
+</div>
+
+<div class="app" id="app" style="display:none">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-logo">知</div>
+      <div class="brand-name">内部知识助手</div>
+    </div>
+    <button class="btn-new" onclick="newChat()">＋ 新建对话</button>
+
+    <div class="section-title">对话记录</div>
+    <div class="conv-list" id="convList">
+      <div class="conv-empty">暂无对话记录</div>
+    </div>
+
+    <div class="section-title">知识库</div>
+    <div class="status-card">
+      <div class="status-row"><span>文档数</span><span class="status-value" id="fileCount">-</span></div>
+      <div class="status-row"><span>向量数</span><span class="status-value" id="vectorCount">-</span></div>
+    </div>
+    <div class="side-actions">
+      <button class="btn-side" id="navDocs" onclick="switchView('docs')" style="display:none">
+        <span class="icon">📁</span> 文档管理
+      </button>
+      <button class="btn-side" id="navUsers" onclick="switchView('users')" style="display:none">
+        <span class="icon">⚙</span> 用户管理
+      </button>
+      <button class="btn-side" id="navAudit" onclick="switchView('audit')" style="display:none">
+        <span class="icon">📋</span> 审计日志
+      </button>
+      <button class="btn-side" id="navRebuild" onclick="rebuildAll()" style="display:none">
+        <span class="icon">↻</span> 全量重新切片
+      </button>
+    </div>
+
+    <div class="sidebar-footer">
+      <span id="currentUser">-</span>
+      <button class="link-btn" onclick="logout()">退出</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="topbar-title" id="viewTitle">对话</div>
+      <div class="badge"><span class="dot"></span><span id="kbStatus">知识库状态检查中</span></div>
+    </div>
+
+    <div class="view" id="view-chat" style="display:flex">
+      <div class="messages" id="messages">
+        <div class="messages-inner" id="messagesInner">
+          <div class="welcome" id="welcome">
+            <div class="welcome-logo">知</div>
+            <h1>有什么可以帮你？</h1>
+            <p>基于内部文档回答，输入问题开始</p>
+          </div>
+        </div>
+      </div>
+      <div class="composer-wrap">
+        <div class="composer">
+          <textarea id="question" rows="1" placeholder="输入你的问题，Enter 发送，Shift+Enter 换行" onkeydown="onKey(event)" oninput="autoResize(this)"></textarea>
+          <div class="composer-bottom">
+            <span class="hint">仅依据知识库内容回答</span>
+            <button class="btn-send" id="sendBtn" onclick="sendQuestion()" title="发送">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="view" id="view-docs" style="display:none">
+      <div class="docs-wrap">
+        <div class="section" id="docsUploadArea">
+          <div class="big-drop" id="bigDrop" onclick="document.getElementById('modalFileInput').click()">
+            <div class="icon">↑</div>
+            <div class="big-title">拖拽文件到此处上传</div>
+            <div class="big-sub">支持 xlsx / xls / csv / word / ppt / md / txt / pdf，也可点击选择文件</div>
+          </div>
+          <div class="docs-actions">
+            <span class="note">拖入文件后，在弹出的表单中选择要上传的部门</span>
+            <button class="btn-inline" onclick="openUploadModal()">选择文件上传</button>
+          </div>
+        </div>
+        <div class="section" style="margin-top:20px">
+          <div class="panel">
+            <h2>文档列表 <span class="note" id="docCount"></span></h2>
+            <div class="search-bar">
+              <input id="docKeyword" placeholder="输入文件名查询" oninput="reloadDocs()" />
+              <select id="docDept" onchange="reloadDocs()" style="max-width:180px">
+                <option value="">全部部门</option>
+              </select>
+            </div>
+            <table class="user-table" id="docTable"></table>
+            <div class="pager" id="docPager"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="view" id="view-users" style="display:none">
+      <div class="users-wrap">
+        <div class="section">
+          <div class="panel">
+            <div class="modal-head" style="margin-bottom:14px">
+              <h2>用户列表</h2>
+              <button class="btn-inline" onclick="openUserModal()">新增用户</button>
+            </div>
+            <div class="search-bar">
+              <input id="userKeyword" placeholder="输入用户名查询" oninput="reloadUsers()" />
+              <select id="userDept" onchange="reloadUsers()" style="max-width:180px">
+                <option value="">全部部门</option>
+              </select>
+              <span class="note" id="userCount"></span>
+            </div>
+            <table class="user-table" id="userTable"></table>
+            <div class="pager" id="userPager"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="view" id="view-audit" style="display:none">
+      <div class="users-wrap">
+        <div class="section">
+          <div class="panel">
+            <h2>审计日志</h2>
+            <div class="search-bar">
+              <input id="auditKeyword" placeholder="用户名 / 详情 / IP" oninput="reloadAuditLogs()" />
+              <select id="auditAction" onchange="reloadAuditLogs()" style="max-width:180px">
+                <option value="">全部操作</option>
+              </select>
+              <span class="note" id="auditCount"></span>
+            </div>
+            <table class="user-table" id="auditTable"></table>
+            <div class="pager" id="auditPager"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div id="toast"></div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
